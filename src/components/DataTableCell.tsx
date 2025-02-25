@@ -89,11 +89,12 @@ const CellEditor = ({
     }
   }
 
+  if (typeof initialValue === "boolean") return null
   return (
     <Input
       className="w-full"
       type={inputType}
-      value={value}
+      value={initialValue}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
     />
