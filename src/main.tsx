@@ -8,7 +8,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App />} />
+        <Route path="/json-db" element={<App />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
