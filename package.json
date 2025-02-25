@@ -1,5 +1,6 @@
 {
   "name": "json-db",
+  "homepage": "https://alessiogs.github.io/json-db/",
   "private": true,
   "version": "0.0.0",
   "type": "module",
