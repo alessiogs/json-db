@@ -2,6 +2,7 @@ import { useAtom } from "jotai"
 import { useState } from "react"
 import { useSearchParams } from "react-router"
 import { collectionsAtom } from "../atoms/jsonAtom"
+import CellEditor from "./CellEditor"
 import { Button } from "./ui/button"
 import {
   Dialog,
@@ -11,12 +12,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog"
-import { Input } from "./ui/input"
 
 const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
   const [open, setOpen] = useState(false)
   const [searchParams] = useSearchParams()
   const [collections, setCollections] = useAtom(collectionsAtom)
+  const [value, setValue] = useState(row[dataKey])
 
   const handleSaveChanges = (updatedValue: string | number | boolean) => {
     const collectionIndex = parseInt(searchParams.get("collection")!)
@@ -36,7 +37,7 @@ const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
     ]
 
     setCollections(newCollections)
-    setOpen(false) // Close the dialog after saving changes
+    setOpen(false)
   }
 
   return (
@@ -50,54 +51,19 @@ const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
           <DialogDescription>
             Make changes to your profile here. Press Enter to save.
           </DialogDescription>
-          <CellEditor initialValue={row[dataKey]} onSave={handleSaveChanges} />
+          <CellEditor
+            value={value}
+            setValue={setValue}
+            onSave={handleSaveChanges}
+          />
           <DialogFooter>
-            <Button variant="default" onClick={() => setOpen(false)}>
+            <Button variant="default" onClick={() => handleSaveChanges(value)}>
               Save changes
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </td>
-  )
-}
-
-const CellEditor = ({
-  initialValue,
-  onSave,
-}: {
-  initialValue: string | number | boolean
-  onSave: (value: string | number | boolean) => void
-}) => {
-  const [value, setValue] = useState(initialValue)
-  const dataType = typeof initialValue
-  let inputType = "text"
-
-  switch (dataType) {
-    case "number":
-      inputType = "number"
-      break
-    case "boolean":
-      inputType = "checkbox"
-      break
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      onSave(value) // Save the updated value and trigger dialog close in parent
-    }
-  }
-
-  if (typeof initialValue === "boolean") return null
-  return (
-    <Input
-      className="w-full"
-      type={inputType}
-      value={initialValue}
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={handleKeyDown}
-    />
   )
 }
 

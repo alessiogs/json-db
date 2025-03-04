@@ -56,7 +56,7 @@ export const collectionsAtom = atom<Collection[]>([
       },
       {
         id: "2",
-        title: "To Kill a Mockingbird",
+        title: "Book 2",
         authorId: "2",
         genreId: "3",
         publication_year: 1960,
