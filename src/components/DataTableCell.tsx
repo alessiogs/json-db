@@ -1,7 +1,7 @@
 import { useAtom } from "jotai"
 import { useState } from "react"
 import { useSearchParams } from "react-router"
-import { collectionsAtom } from "../atoms/jsonAtom"
+import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
 import CellEditor from "./CellEditor"
 import { Button } from "./ui/button"
 import {
@@ -17,7 +17,11 @@ const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
   const [open, setOpen] = useState(false)
   const [searchParams] = useSearchParams()
   const [collections, setCollections] = useAtom(collectionsAtom)
+  const [relations] = useAtom(relationsAtom)
   const [value, setValue] = useState(row[dataKey])
+
+  const collectionIndex = parseInt(searchParams.get("collection")!)
+  const collection = collections[collectionIndex]
 
   const handleSaveChanges = (updatedValue: string | number | boolean) => {
     const collectionIndex = parseInt(searchParams.get("collection")!)
@@ -40,11 +44,27 @@ const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
     setOpen(false)
   }
 
+  const getAlias = () => {
+    const relation = relations.find(
+      (item) =>
+        item.element.collection === collection.name &&
+        item.element.key === dataKey
+    )
+    if (!relation)
+      return row[dataKey] !== undefined ? row[dataKey].toString() : "-"
+    const referredCollection = collections.find(
+      (collection) => collection.name === relation.refersTo.collection
+    )
+    return referredCollection?.data.find(
+      (refRow) => refRow[relation.refersTo.key] === row[dataKey]
+    )?.[relation.alias]
+  }
+
   return (
     <td className="border border-gray-300">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger className="px-4 py-2 w-full h-full text-left cursor-pointer">
-          {row[dataKey] !== undefined ? row[dataKey].toString() : "-"}
+          {getAlias()}
         </DialogTrigger>
         <DialogContent>
           <DialogTitle>{dataKey}</DialogTitle>
