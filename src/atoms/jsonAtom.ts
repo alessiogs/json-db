@@ -113,3 +113,16 @@ export const collectionsAtom = atom<Collection[]>([
     ],
   },
 ])
+
+export type RelationIdentifier = {
+  collection: string
+  key: string
+}
+
+export type Relation = {
+  element: RelationIdentifier
+  refersTo: RelationIdentifier
+  alias: string
+}
+
+export const relationsAtom = atom<Relation[]>([])
