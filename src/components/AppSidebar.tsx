@@ -29,7 +29,7 @@ import { Input } from "./ui/input"
 import RelationsEditor from "./RelationsEditor"
 
 const AppSidebar = () => {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [_, setSearchParams] = useSearchParams()
   const onSelect = (index: string) => {
     setSearchParams((prev) => {
       prev.set("collection", index)
@@ -53,8 +53,7 @@ const AppSidebar = () => {
     }
   }
 
-  const handleRemoveCollection = (e: React.MouseEvent, index: number) => {
-    e.stopPropagation()
+  const handleRemoveCollection = (index: number) => {
     const newCollections = collections.filter((_, i) => i !== index)
     setCollections(newCollections)
   }
@@ -99,7 +98,9 @@ const AppSidebar = () => {
                   >
                     <span>{collection.name}</span>
                   </SidebarMenuButton>
-                  <SidebarMenuAction>
+                  <SidebarMenuAction
+                    onClick={() => handleRemoveCollection(index)}
+                  >
                     <Trash className="hover:text-red-700" />
                   </SidebarMenuAction>
                 </SidebarMenuItem>

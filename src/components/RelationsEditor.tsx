@@ -1,4 +1,4 @@
-import { useAtom } from "jotai"
+import { useAtom, useSetAtom } from "jotai"
 import { useEffect, useState } from "react"
 import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
 import CustomSelect from "./CustomSelect"
@@ -7,7 +7,7 @@ import { SelectItem } from "./ui/select"
 
 const RelationsEditor = () => {
   const [collections] = useAtom(collectionsAtom)
-  const [relations, setRelations] = useAtom(relationsAtom)
+  const setRelations = useSetAtom(relationsAtom)
   const allKeys = collections.map((collection) => ({
     collection: collection.name,
     keys: Array.from(new Set(collection.data.flatMap(Object.keys))),

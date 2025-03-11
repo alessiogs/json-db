@@ -64,7 +64,7 @@ const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
   return (
     <TableCell>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger className="w-full h-full text-left cursor-pointer hover:underline hover:underline">
+        <DialogTrigger className="w-full h-full text-left cursor-pointer hover:underline">
           {getAlias()}
         </DialogTrigger>
         <DialogContent>
