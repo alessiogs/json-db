@@ -1,20 +1,26 @@
+import AppSidebar from "./components/AppSidebar"
 import CollectionEditor from "./components/CollectionEditor"
-import Navbar from "./components/Navbar"
-import RelationsEditor from "./components/RelationsEditor"
-import Sidebar from "./components/Sidebar"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "./components/ui/sidebar"
 
 const App = () => {
   return (
-    <div className="flex flex-col h-screen">
-      <Navbar />
-      <div className="flex flex-1">
-        <Sidebar />
-        <div className="flex-1 h-screen w-full p-4">
-          <RelationsEditor />
-          <CollectionEditor />
-        </div>
-      </div>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <main className="w-screen">
+        <header className="flex p-2">
+          <SidebarTrigger />
+        </header>
+        <SidebarInset>
+          <main className="p-2 w-full">
+            <CollectionEditor />
+          </main>
+        </SidebarInset>
+      </main>
+    </SidebarProvider>
   )
 }
 

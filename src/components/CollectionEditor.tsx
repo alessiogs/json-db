@@ -24,7 +24,7 @@ const CollectionEditor = () => {
     <main className="w-full h-screen overflow-auto">
       {collection ? (
         <section>
-          <h2 className="text-lg font-semibold uppercase mb-4">
+          <h2 className="text-lg font-semibold capitalize mb-4">
             {collection?.name}
           </h2>
 
