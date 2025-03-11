@@ -1,5 +1,6 @@
 import { CollectionData } from "../atoms/jsonAtom"
 import DataTableCell from "./DataTableCell"
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "./ui/table"
 
 const DataTable = ({ data }: { data: CollectionData }) => {
   if (!Array.isArray(data) || data.length === 0) {
@@ -11,29 +12,24 @@ const DataTable = ({ data }: { data: CollectionData }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full border border-gray-300 shadow-md rounded-lg">
-        <thead className="bg-gray-200">
-          <tr>
+      <Table>
+        <TableHeader>
+          <TableRow>
             {allKeys.map((key) => (
-              <th
-                key={key}
-                className="px-4 py-2 border border-gray-300 text-left"
-              >
-                {key}
-              </th>
+              <TableHead key={key}>{key}</TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.map((row, rowIndex) => (
-            <tr key={rowIndex} className="odd:bg-white even:bg-gray-100">
+            <TableRow key={rowIndex}>
               {allKeys.map((key) => (
                 <DataTableCell key={key} row={row} dataKey={key} />
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   )
 }

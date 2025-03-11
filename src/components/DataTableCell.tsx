@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog"
+import { TableCell } from "./ui/table"
 
 const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
   const [open, setOpen] = useState(false)
@@ -61,9 +62,9 @@ const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
   }
 
   return (
-    <td className="border border-gray-300">
+    <TableCell>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger className="px-4 py-2 w-full h-full text-left cursor-pointer">
+        <DialogTrigger className="w-full h-full text-left cursor-pointer hover:underline hover:underline">
           {getAlias()}
         </DialogTrigger>
         <DialogContent>
@@ -83,7 +84,7 @@ const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </td>
+    </TableCell>
   )
 }
 
