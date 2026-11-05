@@ -142,6 +142,54 @@ export const readCell = <K extends ColumnKind>(
     : { status: "invalid", raw }
 }
 
+/* ---------- Converting between kinds ---------- */
+
+/**
+ * Compose two codecs into a conversion: show a value as `from` would, then
+ * read that text back as `to`. E.g. number → string[] turns 3 into ["3"].
+ */
+export const convert =
+  <A, B>(from: Codec<A>, to: Codec<B>) =>
+  (value: A): Result<B> =>
+    to.parse(from.format(value))
+
+/** Text for a value that doesn't match its column, so it can be re-read. */
+const textOf = (raw: CellValue): string =>
+  Array.isArray(raw) ? raw.join(", ") : String(raw)
+
+/** The rows after re-typing a column, and how many cells didn't fit. */
+export type ColumnConversion = { data: Row[]; invalid: number }
+
+/**
+ * Change a column's kind: valid values go through `convert`, invalid ones are
+ * re-read from their text, missing ones stay missing. A value that doesn't fit
+ * the new kind is left untouched (it shows up as an invalid cell), so
+ * converting back recovers it.
+ */
+export const convertColumn = <K extends ColumnKind, L extends ColumnKind>(
+  rows: readonly Row[],
+  column: ColumnDef<K>,
+  kind: L
+): ColumnConversion => {
+  const to = codecFor(kind)
+  const retype = convert(codecFor(column.kind), to)
+
+  let invalid = 0
+  const data = rows.map((row): Row => {
+    const cell = readCell(row, column)
+    if (cell.status === "missing") return row
+
+    const result =
+      cell.status === "valid" ? retype(cell.value) : to.parse(textOf(cell.raw))
+    if (!result.ok) {
+      invalid++
+      return row
+    }
+    return { ...row, [column.key]: result.value }
+  })
+  return { data, invalid }
+}
+
 /* ---------- Inferring a schema from data ---------- */
 
 const scalarKindOf = (value: unknown): ScalarKind | undefined => {
