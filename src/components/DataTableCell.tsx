@@ -2,6 +2,7 @@ import { useAtom } from "jotai"
 import { useState } from "react"
 import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
 import { useSelectedCollectionName } from "../hooks/useSelectedCollection"
+import { useUpdateCollection } from "../hooks/useUpdateCollection"
 import {
   codecFor,
   readCell,
@@ -26,26 +27,21 @@ type DataTableCellProps = {
 
 const DataTableCell = ({ row, column }: DataTableCellProps) => {
   const [open, setOpen] = useState(false)
-  const [collections, setCollections] = useAtom(collectionsAtom)
+  const [collections] = useAtom(collectionsAtom)
   const [relations] = useAtom(relationsAtom)
 
   const collectionName = useSelectedCollectionName()
+  const updateCollection = useUpdateCollection(collectionName)
   const collection = collections.find((c) => c.name === collectionName)
   const cell = readCell(row, column)
 
   const handleSave = (value: CellValue) => {
-    setCollections((prev) =>
-      prev.map((current) =>
-        current.name !== collectionName
-          ? current
-          : {
-              ...current,
-              data: current.data.map((item) =>
-                item.id === row.id ? { ...item, [column.key]: value } : item
-              ),
-            }
-      )
-    )
+    updateCollection((current) => ({
+      ...current,
+      data: current.data.map((item) =>
+        item.id === row.id ? { ...item, [column.key]: value } : item
+      ),
+    }))
     setOpen(false)
   }
 

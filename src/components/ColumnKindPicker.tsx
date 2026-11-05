@@ -1,6 +1,6 @@
-import { useSetAtom } from "jotai"
 import { useMemo, useState } from "react"
-import { collectionsAtom, type Collection } from "../atoms/jsonAtom"
+import type { Collection } from "../atoms/jsonAtom"
+import { useUpdateCollection } from "../hooks/useUpdateCollection"
 import {
   columnKinds,
   convertColumn,
@@ -35,7 +35,7 @@ type ColumnKindPickerProps = {
 const ColumnKindPicker = ({ collection, column }: ColumnKindPickerProps) => {
   const [open, setOpen] = useState(false)
   const [selectedKind, setSelectedKind] = useState<ColumnKind>(column.kind)
-  const setCollections = useSetAtom(collectionsAtom)
+  const updateCollection = useUpdateCollection(collection.name)
 
   // Only preview while the dialog is open: every header has a picker.
   const conversion = useMemo(
@@ -58,21 +58,13 @@ const ColumnKindPicker = ({ collection, column }: ColumnKindPickerProps) => {
 
   const handleConfirm = () => {
     if (!conversion) return
-    setCollections((prev) =>
-      prev.map((current) =>
-        current.name !== collection.name
-          ? current
-          : {
-              ...current,
-              data: conversion.data,
-              schema: current.schema.map((item) =>
-                item.key === column.key
-                  ? { key: column.key, kind: selectedKind }
-                  : item
-              ),
-            }
-      )
-    )
+    updateCollection((current) => ({
+      ...current,
+      data: conversion.data,
+      schema: current.schema.map((item) =>
+        item.key === column.key ? { key: column.key, kind: selectedKind } : item
+      ),
+    }))
     setOpen(false)
   }
 
