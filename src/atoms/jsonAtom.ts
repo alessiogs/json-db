@@ -1,5 +1,17 @@
-import { atom } from "jotai"
-import { inferSchema, type Row, type Schema } from "../lib/schema"
+import { atomWithStorage } from "jotai/utils"
+import {
+  err,
+  inferSchema,
+  isPlainObject,
+  ok,
+  validateObjects,
+  validateRows,
+  validateSchema,
+  type Result,
+  type Row,
+  type Schema,
+} from "../lib/schema"
+import { validatedStorage } from "../lib/storage"
 
 export type Collection = {
   name: string
@@ -16,7 +28,7 @@ export const makeCollection = (name: string, data: Row[]): Collection => ({
   schema: inferSchema(data),
 })
 
-export const collectionsAtom = atom<Collection[]>([
+const seedCollections: Collection[] = [
   makeCollection("authors", [
     {
       id: "1",
@@ -109,7 +121,37 @@ export const collectionsAtom = atom<Collection[]>([
       name: "Romance",
     },
   ]),
-])
+]
+
+/**
+ * Check stored collections. A bad schema is re-inferred from the data rather
+ * than rejecting everything, since it can always be derived again.
+ */
+export const validateCollections = (value: unknown): Result<Collection[]> => {
+  const names = new Set<string>()
+  return validateObjects(value, "Collection", ({ name, data, schema }, where) => {
+    if (typeof name !== "string") return err(`${where} needs a string "name".`)
+    if (names.has(name)) return err(`${where}: duplicate name "${name}".`)
+    names.add(name)
+
+    const rows = validateRows(data)
+    if (!rows.ok) return err(`${where}: ${rows.error}`)
+
+    const checked = validateSchema(schema)
+    return ok({
+      name,
+      data: rows.value,
+      schema: checked.ok ? checked.value : inferSchema(rows.value),
+    })
+  })
+}
+
+export const collectionsAtom = atomWithStorage(
+  "json-db:collections",
+  seedCollections,
+  validatedStorage(validateCollections),
+  { getOnInit: true }
+)
 
 export type RelationIdentifier = {
   collection: string
@@ -122,7 +164,34 @@ export type Relation = {
   alias: string
 }
 
-export const relationsAtom = atom<Relation[]>([])
+const validateIdentifier = (value: unknown): Result<RelationIdentifier> => {
+  if (!isPlainObject(value)) return err("isn't an object.")
+  const { collection, key } = value
+  if (typeof collection !== "string" || typeof key !== "string") {
+    return err("needs a string collection and key.")
+  }
+  return ok({ collection, key })
+}
+
+/** Check stored relations. */
+export const validateRelations = (value: unknown): Result<Relation[]> =>
+  validateObjects(value, "Relation", (item, where) => {
+    const element = validateIdentifier(item.element)
+    if (!element.ok) return err(`${where}, element: ${element.error}`)
+    const refersTo = validateIdentifier(item.refersTo)
+    if (!refersTo.ok) return err(`${where}, refersTo: ${refersTo.error}`)
+    if (typeof item.alias !== "string") {
+      return err(`${where} needs a string "alias".`)
+    }
+    return ok({ element: element.value, refersTo: refersTo.value, alias: item.alias })
+  })
+
+export const relationsAtom = atomWithStorage<Relation[]>(
+  "json-db:relations",
+  [],
+  validatedStorage(validateRelations),
+  { getOnInit: true }
+)
 
 /** A relation being edited: same shape, but fields may still be empty. */
 export const emptyRelation: Relation = {
