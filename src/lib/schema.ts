@@ -48,8 +48,8 @@ export type Schema = Column[]
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
 
-const ok = <T>(value: T): Result<T> => ({ ok: true, value })
-const err = <T = never>(error: string): Result<T> => ({ ok: false, error })
+export const ok = <T>(value: T): Result<T> => ({ ok: true, value })
+export const err = <T = never>(error: string): Result<T> => ({ ok: false, error })
 
 /* ---------- Codecs: parse, format and validate values of one kind ---------- */
 
@@ -194,16 +194,59 @@ export const inferSchema = (rows: readonly Row[]): Schema => {
 
 /* ---------- Importing rows from JSON ---------- */
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+export const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
 const isCellValue = (value: unknown): value is CellValue =>
   kindOf(value) !== undefined || (Array.isArray(value) && value.length === 0)
 
 /**
- * Parse a JSON file into rows: an array of objects, each with a string or
- * number `id`. `null` values are treated as missing.
+ * Check that `value` is an array of plain objects and validate each one,
+ * stopping at the first error. `label` names items in messages ("Item 2 …").
  */
+export const validateObjects = <T>(
+  value: unknown,
+  label: string,
+  validateItem: (item: Record<string, unknown>, where: string) => Result<T>
+): Result<T[]> => {
+  if (!Array.isArray(value)) return err("Expected an array of objects.")
+  const items: unknown[] = value
+
+  const valid: T[] = []
+  for (const [index, item] of items.entries()) {
+    const where = `${label} ${index + 1}`
+    if (!isPlainObject(item)) return err(`${where} isn't an object.`)
+    const result = validateItem(item, where)
+    if (!result.ok) return result
+    valid.push(result.value)
+  }
+  return ok(valid)
+}
+
+/**
+ * Check rows: objects with a string or number `id`, whose other values are
+ * cells. `null` values are treated as missing.
+ */
+export const validateRows = (value: unknown): Result<Row[]> =>
+  validateObjects(value, "Item", ({ id, ...rest }, where) => {
+    if (typeof id !== "string" && typeof id !== "number") {
+      return err(`${where} needs a string or number "id".`)
+    }
+
+    const row: Row = { id: String(id) }
+    for (const [key, cell] of Object.entries(rest)) {
+      if (cell === null) continue
+      if (!isCellValue(cell)) {
+        return err(
+          `${where}, "${key}": nested objects and mixed arrays aren't supported yet.`
+        )
+      }
+      row[key] = cell
+    }
+    return ok(row)
+  })
+
+/** Parse a JSON file into rows (see `validateRows`). */
 export const parseRows = (json: string): Result<Row[]> => {
   let parsed: unknown
   try {
@@ -211,29 +254,18 @@ export const parseRows = (json: string): Result<Row[]> => {
   } catch {
     return err("The file isn't valid JSON.")
   }
-  if (!Array.isArray(parsed)) return err("Expected an array of objects.")
-
-  const rows: Row[] = []
-  for (const [index, item] of (parsed as unknown[]).entries()) {
-    const where = `Item ${index + 1}`
-    if (!isPlainObject(item)) return err(`${where} isn't an object.`)
-
-    const { id, ...rest } = item
-    if (typeof id !== "string" && typeof id !== "number") {
-      return err(`${where} needs a string or number "id".`)
-    }
-
-    const row: Row = { id: String(id) }
-    for (const [key, value] of Object.entries(rest)) {
-      if (value === null) continue
-      if (!isCellValue(value)) {
-        return err(
-          `${where}, "${key}": nested objects and mixed arrays aren't supported yet.`
-        )
-      }
-      row[key] = value
-    }
-    rows.push(row)
-  }
-  return ok(rows)
+  return validateRows(parsed)
 }
+
+/* ---------- Validating a stored schema ---------- */
+
+export const isColumnKind = (value: unknown): value is ColumnKind =>
+  columnKinds.some((kind) => kind === value)
+
+/** Check a schema: `{ key, kind }` columns with a known kind. */
+export const validateSchema = (value: unknown): Result<Schema> =>
+  validateObjects(value, "Column", ({ key, kind }, where): Result<Column> => {
+    if (typeof key !== "string") return err(`${where} needs a string "key".`)
+    if (!isColumnKind(kind)) return err(`${where} has an unknown kind.`)
+    return ok({ key, kind })
+  })
