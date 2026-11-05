@@ -28,7 +28,7 @@ const CollectionEditor = () => {
             {collection?.name}
           </h2>
 
-          <DataTable data={collection?.data} />
+          <DataTable collection={collection} />
         </section>
       ) : (
         <div className="flex flex-1 justify-center items-center">

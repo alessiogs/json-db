@@ -1,7 +1,12 @@
 import { useAtom } from "jotai"
 import { useState } from "react"
 import { useSearchParams } from "react-router"
-import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
+import {
+  collectionsAtom,
+  makeCollection,
+  relationsAtom,
+} from "../atoms/jsonAtom"
+import { parseRows } from "../lib/schema"
 import {
   Sidebar,
   SidebarContent,
@@ -41,16 +46,17 @@ const AppSidebar = () => {
   const [relations] = useAtom(relationsAtom)
   const [open, setOpen] = useState(false)
 
-  const handleAddCollection = () => {
-    const collection = file
-    if (collection) {
-      const reader = new FileReader()
-      reader.onload = () => {
-        const data = JSON.parse(reader.result as string)
-        setCollections((prev) => [...prev, { name: collection.name, data }])
-      }
-      reader.readAsText(collection)
-    }
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const handleAddCollection = async () => {
+    if (!file) return
+    const rows = parseRows(await file.text())
+    if (!rows.ok) return setUploadError(rows.error)
+
+    const name = file.name.replace(/\.json$/i, "")
+    setCollections((prev) => [...prev, makeCollection(name, rows.value)])
+    setUploadError(null)
+    setOpen(false)
   }
 
   const handleRemoveCollection = (index: number) => {
@@ -77,8 +83,16 @@ const AppSidebar = () => {
                   <Input
                     type="file"
                     accept=".json"
-                    onChange={(e) => setFile(e.target.files![0])}
+                    onChange={(e) => {
+                      setFile(e.target.files?.[0] ?? null)
+                      setUploadError(null)
+                    }}
                   />
+                  {uploadError && (
+                    <p className="mt-2 text-sm text-destructive">
+                      {uploadError}
+                    </p>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={handleAddCollection}>
