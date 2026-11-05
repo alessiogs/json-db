@@ -1,22 +1,20 @@
-import { useAtom, useSetAtom } from "jotai"
-import { useEffect, useState } from "react"
-import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
+import { useAtom } from "jotai"
+import { useEffect } from "react"
+import { collectionsAtom, type Relation } from "../atoms/jsonAtom"
 import CustomSelect from "./CustomSelect"
-import { Button } from "./ui/button"
 import { SelectItem } from "./ui/select"
 
-const RelationsEditor = () => {
+type RelationsEditorProps = {
+  formData: Relation
+  setFormData: (draft: Relation) => void
+}
+
+const RelationsEditor = ({ formData, setFormData }: RelationsEditorProps) => {
   const [collections] = useAtom(collectionsAtom)
-  const setRelations = useSetAtom(relationsAtom)
   const allKeys = collections.map((collection) => ({
     collection: collection.name,
     keys: collection.schema.map((column) => column.key),
   }))
-  const [formData, setFormData] = useState({
-    element: { collection: "", key: "" },
-    refersTo: { collection: "", key: "" },
-    alias: "",
-  })
 
   useEffect(() => {
     if (formData.element.collection === formData.refersTo.collection) {
@@ -27,20 +25,6 @@ const RelationsEditor = () => {
       })
     }
   }, [formData.element.collection])
-
-  const handleCreateRelation = () => {
-    if (
-      !formData.alias &&
-      !formData.element.collection &&
-      !formData.element.key &&
-      !formData.refersTo.collection &&
-      !formData.refersTo.key
-    ) {
-      return
-    }
-
-    setRelations((prev) => [...prev, formData])
-  }
 
   const handleChange = (
     value: string,
@@ -144,11 +128,6 @@ const RelationsEditor = () => {
         </CustomSelect>
       }
       in place of {formData.element.key}
-      <div className="text-right">
-        <Button variant="outline" onClick={handleCreateRelation}>
-          Create Relation
-        </Button>
-      </div>
     </section>
   )
 }

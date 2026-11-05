@@ -3,6 +3,8 @@ import { useState } from "react"
 import { useSearchParams } from "react-router"
 import {
   collectionsAtom,
+  emptyRelation,
+  isCompleteRelation,
   makeCollection,
   relationsAtom,
 } from "../atoms/jsonAtom"
@@ -34,17 +36,19 @@ import { Input } from "./ui/input"
 import RelationsEditor from "./RelationsEditor"
 
 const AppSidebar = () => {
-  const [_, setSearchParams] = useSearchParams()
-  const onSelect = (index: string) => {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const onSelect = (name: string) => {
     setSearchParams((prev) => {
-      prev.set("collection", index)
+      prev.set("collection", name)
       return prev
     })
   }
   const [file, setFile] = useState<File | null>(null)
   const [collections, setCollections] = useAtom(collectionsAtom)
-  const [relations] = useAtom(relationsAtom)
-  const [open, setOpen] = useState(false)
+  const [relations, setRelations] = useAtom(relationsAtom)
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false)
+  const [relationDialogOpen, setRelationDialogOpen] = useState(false)
+  const [relationDraft, setRelationDraft] = useState(emptyRelation)
 
   const [uploadError, setUploadError] = useState<string | null>(null)
 
@@ -54,14 +58,29 @@ const AppSidebar = () => {
     if (!rows.ok) return setUploadError(rows.error)
 
     const name = file.name.replace(/\.json$/i, "")
+    if (collections.some((collection) => collection.name === name)) {
+      return setUploadError(`A collection named "${name}" already exists`)
+    }
     setCollections((prev) => [...prev, makeCollection(name, rows.value)])
     setUploadError(null)
-    setOpen(false)
+    setCollectionDialogOpen(false)
   }
 
-  const handleRemoveCollection = (index: number) => {
-    const newCollections = collections.filter((_, i) => i !== index)
-    setCollections(newCollections)
+  const handleAddRelation = () => {
+    if (!isCompleteRelation(relationDraft)) return
+    setRelations((prev) => [...prev, relationDraft])
+    setRelationDraft(emptyRelation)
+    setRelationDialogOpen(false)
+  }
+
+  const handleRemoveCollection = (name: string) => {
+    setCollections((prev) => prev.filter((collection) => collection.name !== name))
+    if (searchParams.get("collection") === name) {
+      setSearchParams((prev) => {
+        prev.delete("collection")
+        return prev
+      })
+    }
   }
 
   return (
@@ -70,7 +89,10 @@ const AppSidebar = () => {
         <SidebarGroup>
           <SidebarGroupLabel>Collections</SidebarGroupLabel>
           <SidebarGroupAction className="cursor-pointer">
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog
+              open={collectionDialogOpen}
+              onOpenChange={setCollectionDialogOpen}
+            >
               <DialogTrigger asChild>
                 <Plus />
               </DialogTrigger>
@@ -104,16 +126,16 @@ const AppSidebar = () => {
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
-              {collections.map((collection, index) => (
-                <SidebarMenuItem key={index}>
+              {collections.map((collection) => (
+                <SidebarMenuItem key={collection.name}>
                   <SidebarMenuButton
-                    onClick={() => onSelect(index.toString())}
+                    onClick={() => onSelect(collection.name)}
                     asChild
                   >
                     <span>{collection.name}</span>
                   </SidebarMenuButton>
                   <SidebarMenuAction
-                    onClick={() => handleRemoveCollection(index)}
+                    onClick={() => handleRemoveCollection(collection.name)}
                   >
                     <Trash className="hover:text-red-700" />
                   </SidebarMenuAction>
@@ -126,7 +148,10 @@ const AppSidebar = () => {
         <SidebarGroup>
           <SidebarGroupLabel>Relations</SidebarGroupLabel>
           <SidebarGroupAction className="cursor-pointer">
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog
+              open={relationDialogOpen}
+              onOpenChange={setRelationDialogOpen}
+            >
               <DialogTrigger asChild>
                 <Plus />
               </DialogTrigger>
@@ -135,9 +160,16 @@ const AppSidebar = () => {
                   <DialogTitle>Add Relation</DialogTitle>
                 </DialogHeader>
                 <DialogDescription></DialogDescription>
-                <RelationsEditor />
+                <RelationsEditor
+                  formData={relationDraft}
+                  setFormData={setRelationDraft}
+                />
                 <DialogFooter>
-                  <Button variant="outline" onClick={handleAddCollection}>
+                  <Button
+                    variant="outline"
+                    disabled={!isCompleteRelation(relationDraft)}
+                    onClick={handleAddRelation}
+                  >
                     Add
                   </Button>
                 </DialogFooter>

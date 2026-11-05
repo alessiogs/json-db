@@ -1,7 +1,7 @@
 import { useAtom } from "jotai"
 import { useState } from "react"
-import { useSearchParams } from "react-router"
 import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
+import { useSelectedCollectionName } from "../hooks/useSelectedCollection"
 import {
   codecFor,
   readCell,
@@ -26,18 +26,17 @@ type DataTableCellProps = {
 
 const DataTableCell = ({ row, column }: DataTableCellProps) => {
   const [open, setOpen] = useState(false)
-  const [searchParams] = useSearchParams()
   const [collections, setCollections] = useAtom(collectionsAtom)
   const [relations] = useAtom(relationsAtom)
 
-  const collectionIndex = Number(searchParams.get("collection"))
-  const collection = collections[collectionIndex]
+  const collectionName = useSelectedCollectionName()
+  const collection = collections.find((c) => c.name === collectionName)
   const cell = readCell(row, column)
 
   const handleSave = (value: CellValue) => {
     setCollections((prev) =>
-      prev.map((current, index) =>
-        index !== collectionIndex
+      prev.map((current) =>
+        current.name !== collectionName
           ? current
           : {
               ...current,

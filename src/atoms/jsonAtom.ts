@@ -123,3 +123,14 @@ export type Relation = {
 }
 
 export const relationsAtom = atom<Relation[]>([])
+
+/** A relation being edited: same shape, but fields may still be empty. */
+export const emptyRelation: Relation = {
+  element: { collection: "", key: "" },
+  refersTo: { collection: "", key: "" },
+  alias: "",
+}
+
+export const isCompleteRelation = ({ element, refersTo, alias }: Relation) =>
+  [element.collection, element.key, refersTo.collection, refersTo.key, alias]
+    .every(Boolean)
