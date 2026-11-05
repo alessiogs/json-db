@@ -10,7 +10,7 @@ const RelationsEditor = () => {
   const setRelations = useSetAtom(relationsAtom)
   const allKeys = collections.map((collection) => ({
     collection: collection.name,
-    keys: Array.from(new Set(collection.data.flatMap(Object.keys))),
+    keys: collection.schema.map((column) => column.key),
   }))
   const [formData, setFormData] = useState({
     element: { collection: "", key: "" },
