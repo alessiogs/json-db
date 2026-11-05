@@ -1,4 +1,5 @@
 import type { Collection } from "../atoms/jsonAtom"
+import ColumnKindPicker from "./ColumnKindPicker"
 import DataTableCell from "./DataTableCell"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "./ui/table"
 
@@ -17,9 +18,13 @@ const DataTable = ({ collection }: { collection: Collection }) => {
             {schema.map((column) => (
               <TableHead key={column.key}>
                 {column.key}
-                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                  {column.kind}
-                </span>
+                {column.key === "id" ? (
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    {column.kind}
+                  </span>
+                ) : (
+                  <ColumnKindPicker collection={collection} column={column} />
+                )}
               </TableHead>
             ))}
           </TableRow>
