@@ -1,7 +1,7 @@
 import { useAtom } from "jotai"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router"
-import { Collection, collectionsAtom } from "../atoms/jsonAtom"
+import { type Collection, collectionsAtom } from "../atoms/jsonAtom"
 import DataTable from "./DataTable"
 
 const CollectionEditor = () => {
