@@ -9,9 +9,11 @@ import {
   relationsAtom,
 } from "../atoms/jsonAtom"
 import { parseRows } from "../lib/schema"
+import { download, toDbJson, toTypeScript } from "../lib/export"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupAction,
   SidebarGroupContent,
@@ -21,7 +23,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "./ui/sidebar"
-import { Plus, Trash } from "lucide-react"
+import { Download, FileCode, Plus, Trash } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -71,6 +73,17 @@ const AppSidebar = () => {
     setRelations((prev) => [...prev, relationDraft])
     setRelationDraft(emptyRelation)
     setRelationDialogOpen(false)
+  }
+
+  const hasCollections = collections.length > 0
+
+  const handleExportJson = () => {
+    const json = JSON.stringify(toDbJson(collections), null, 2) + "\n"
+    download("db.json", json, "application/json")
+  }
+
+  const handleExportTypes = () => {
+    download("db.types.ts", toTypeScript(collections), "text/plain")
   }
 
   const handleRemoveCollection = (name: string) => {
@@ -189,6 +202,28 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!hasCollections}
+            onClick={handleExportJson}
+          >
+            <Download />
+            Export db.json
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!hasCollections}
+            onClick={handleExportTypes}
+          >
+            <FileCode />
+            Export types.ts
+          </Button>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   )
 }
