@@ -14,6 +14,7 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm install
+      - run: cat node_modules/jotai/vanilla/utils/atomWithStorage.d.ts; grep -n "SyncStorage\|AsyncStorage\|atomWithStorage" node_modules/jotai/vanilla/utils.d.ts
       - run: npm run build
         continue-on-error: true
       - run: npm run lint
