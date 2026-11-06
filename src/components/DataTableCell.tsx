@@ -1,87 +1,123 @@
 import { useAtom } from "jotai"
 import { useState } from "react"
-import { useSearchParams } from "react-router"
 import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
+import { useSelectedCollectionName } from "../hooks/useSelectedCollection"
+import { useUpdateCollection } from "../hooks/useUpdateCollection"
+import {
+  referenceOptions,
+  relationFrom,
+  resolveReference,
+} from "../lib/reference"
+import {
+  codecFor,
+  isScalarKind,
+  readCell,
+  type CellValue,
+  type Column,
+  type Row,
+} from "../lib/schema"
 import CellEditor from "./CellEditor"
-import { Button } from "./ui/button"
+import ReferencePicker from "./ReferencePicker"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogTitle,
   DialogTrigger,
 } from "./ui/dialog"
 import { TableCell } from "./ui/table"
 
-const DataTableCell = ({ row, dataKey }: { row: any; dataKey: string }) => {
+type DataTableCellProps = {
+  row: Row
+  column: Column
+}
+
+const DataTableCell = ({ row, column }: DataTableCellProps) => {
   const [open, setOpen] = useState(false)
-  const [searchParams] = useSearchParams()
-  const [collections, setCollections] = useAtom(collectionsAtom)
+  const [collections] = useAtom(collectionsAtom)
   const [relations] = useAtom(relationsAtom)
-  const [value, setValue] = useState(row[dataKey])
 
-  const collectionIndex = parseInt(searchParams.get("collection")!)
-  const collection = collections[collectionIndex]
+  const collectionName = useSelectedCollectionName()
+  const updateCollection = useUpdateCollection(collectionName)
+  const cell = readCell(row, column)
 
-  const handleSaveChanges = (updatedValue: string | number | boolean) => {
-    const collectionIndex = parseInt(searchParams.get("collection")!)
-    const collection = collections[collectionIndex]
+  // A column a relation points from holds references to another collection.
+  const relation =
+    collectionName === null
+      ? undefined
+      : relationFrom(relations, collectionName, column.key)
+  const reference =
+    relation && cell.status === "valid"
+      ? resolveReference(collections, relation, cell.value)
+      : undefined
 
-    const newCollection = {
-      ...collection,
-      data: collection.data.map((item: any) =>
-        item.id === row.id ? { ...item, [dataKey]: updatedValue } : item
+  const handleSave = (value: CellValue) => {
+    updateCollection((current) => ({
+      ...current,
+      data: current.data.map((item) =>
+        item.id === row.id ? { ...item, [column.key]: value } : item
       ),
-    }
-
-    const newCollections = [
-      ...collections.slice(0, collectionIndex),
-      newCollection,
-      ...collections.slice(collectionIndex + 1),
-    ]
-
-    setCollections(newCollections)
+    }))
     setOpen(false)
   }
 
-  const getAlias = () => {
-    const relation = relations.find(
-      (item) =>
-        item.element.collection === collection.name &&
-        item.element.key === dataKey
-    )
-    if (!relation)
-      return row[dataKey] !== undefined ? row[dataKey].toString() : "-"
-    const referredCollection = collections.find(
-      (collection) => collection.name === relation.refersTo.collection
-    )
-    return referredCollection?.data.find(
-      (refRow) => refRow[relation.refersTo.key] === row[dataKey]
-    )?.[relation.alias]
-  }
+  const display =
+    cell.status === "missing"
+      ? "-"
+      : cell.status === "invalid"
+        ? String(cell.raw)
+        : codecFor(column.kind).format(cell.value)
+
+  const problem =
+    cell.status === "invalid"
+      ? `Expected ${column.kind}`
+      : reference?.status === "dangling"
+        ? reference.reason
+        : undefined
+
+  const initial = cell.status === "valid" ? cell.value : undefined
 
   return (
     <TableCell>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger className="w-full h-full text-left cursor-pointer hover:underline">
-          {getAlias()}
+        <DialogTrigger
+          className={`w-full h-full text-left cursor-pointer hover:underline ${
+            problem ? "text-destructive" : ""
+          }`}
+          title={problem}
+        >
+          {display}
+          {reference?.status === "found" && (
+            <span className="ml-1.5 text-muted-foreground">
+              {reference.label}
+            </span>
+          )}
         </DialogTrigger>
         <DialogContent>
-          <DialogTitle>{dataKey}</DialogTitle>
-          <DialogDescription>
-            Make changes to your profile here. Press Enter to save.
-          </DialogDescription>
-          <CellEditor
-            value={value}
-            setValue={setValue}
-            onSave={handleSaveChanges}
-          />
-          <DialogFooter>
-            <Button variant="default" onClick={() => handleSaveChanges(value)}>
-              Save changes
-            </Button>
-          </DialogFooter>
+          <DialogTitle>{column.key}</DialogTitle>
+          {relation && isScalarKind(column.kind) ? (
+            <>
+              <DialogDescription>
+                Pick the {relation.refersTo.collection} row this points at.
+              </DialogDescription>
+              <ReferencePicker
+                options={referenceOptions(collections, relation, column.kind)}
+                initial={initial}
+                onSave={handleSave}
+              />
+            </>
+          ) : (
+            <>
+              <DialogDescription>
+                Edit this {column.kind} value. Press Enter to save.
+              </DialogDescription>
+              <CellEditor
+                kind={column.kind}
+                initial={initial}
+                onSave={handleSave}
+              />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </TableCell>

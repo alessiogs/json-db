@@ -1,25 +1,14 @@
 import { useAtom } from "jotai"
-import { useEffect, useState } from "react"
-import { useSearchParams } from "react-router"
-import { Collection, collectionsAtom } from "../atoms/jsonAtom"
+import { collectionsAtom } from "../atoms/jsonAtom"
+import { useSelectedCollectionName } from "../hooks/useSelectedCollection"
 import DataTable from "./DataTable"
 
 const CollectionEditor = () => {
-  const [searchParams] = useSearchParams()
   const [collections] = useAtom(collectionsAtom)
-  const [collection, setCollection] = useState<Collection | null>(null)
+  const collectionName = useSelectedCollectionName()
+  const collection =
+    collections.find((current) => current.name === collectionName) ?? null
 
-  useEffect(() => {
-    const index = searchParams.get("collection")
-    if (index !== null) {
-      const selectedCollection = collections[parseInt(index)]
-      if (selectedCollection) {
-        return setCollection(selectedCollection)
-      }
-    } else {
-      return setCollection(null)
-    }
-  }, [searchParams, collections])
   return (
     <main className="w-full h-screen overflow-auto">
       {collection ? (
@@ -28,7 +17,7 @@ const CollectionEditor = () => {
             {collection?.name}
           </h2>
 
-          <DataTable data={collection?.data} />
+          <DataTable collection={collection} />
         </section>
       ) : (
         <div className="flex flex-1 justify-center items-center">

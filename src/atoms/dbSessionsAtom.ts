@@ -1,5 +1,5 @@
 import { atomWithStorage } from "jotai/utils"
-import { Collection, Relation } from "./jsonAtom"
+import type { Collection, Relation } from "./jsonAtom"
 
 export type DbSession = {
   name: string
