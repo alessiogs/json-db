@@ -1,5 +1,4 @@
 import { useAtom } from "jotai"
-import { useEffect } from "react"
 import { collectionsAtom, type Relation } from "../atoms/jsonAtom"
 import CustomSelect from "./CustomSelect"
 import { SelectItem } from "./ui/select"
@@ -16,21 +15,25 @@ const RelationsEditor = ({ formData, setFormData }: RelationsEditorProps) => {
     keys: collection.schema.map((column) => column.key),
   }))
 
-  useEffect(() => {
-    if (formData.element.collection === formData.refersTo.collection) {
-      setFormData({
-        ...formData,
-        element: { ...formData.element, key: "" },
-        refersTo: { collection: "", key: "" },
-      })
-    }
-  }, [formData.element.collection])
-
   const handleChange = (
     value: string,
     side: "element" | "refersTo",
     level: "collection" | "key"
   ) => {
+    // A relation can't point at its own collection: picking the target's
+    // collection as the element clears the target.
+    if (
+      side === "element" &&
+      level === "collection" &&
+      value === formData.refersTo.collection
+    ) {
+      setFormData({
+        ...formData,
+        element: { collection: value, key: "" },
+        refersTo: { collection: "", key: "" },
+      })
+      return
+    }
     setFormData({
       ...formData,
       [side]: {

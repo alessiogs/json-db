@@ -25,4 +25,9 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // shadcn components export helpers (e.g. buttonVariants) beside components.
+    files: ['src/components/ui/**'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 )
