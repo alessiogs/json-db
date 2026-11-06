@@ -1,50 +1,43 @@
-# React + TypeScript + Vite
+# json-db
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A small in-browser database editor: collections of JSON rows with typed columns and relations. When you're done, export the data as a `db.json` (ready for [json-server](https://github.com/typicode/json-server)) together with matching TypeScript types.
 
-Currently, two official plugins are available:
+**Live:** https://alessiogs.github.io/json-db/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## The example library
 
-## Expanding the ESLint configuration
+A first visit opens a small library. It is seeded in `src/atoms/jsonAtom.ts` and is built to show every feature:
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+| Collection | Columns | References |
+| --- | --- | --- |
+| `authors` | name, born, nationality | — |
+| `genres` | name | — |
+| `books` | title, published, available, tags (`string[]`), ratings (`number[]`) | `authorId` → authors.name, `genreId` → genres.name |
+| `members` | name, email, joined | — |
+| `loans` | returned | `bookId` → books.title, `memberId` → members.name |
 
-- Configure the top-level `parserOptions` property like this:
+Things to try:
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+- **References.** Open `books`: `authorId` shows `2 George Orwell`. Click the cell to pick another author; only existing authors are offered.
+- **Broken references.** Delete George Orwell from `authors`. In `books`, his ids turn red, and hovering one explains why.
+- **Column types.** Click a column's type (e.g. `published  number`) to convert it. The dialog previews how many values would become invalid. Invalid cells stay in red until you fix them.
+- **Import.** Use *Add Collection* with [`examples/reviews.json`](examples/reviews.json). Then add relations `reviews.bookId` → `books.id` (alias `title`) and `reviews.memberId` → `members.id` (alias `name`). Review 4 points at book 9, which doesn't exist, so it shows up as a broken reference.
+- **Export.** *Export db.json* and *Export types* in the sidebar footer.
+
+Everything is saved in `localStorage`, so to get the example back, clear the site's data.
+
+## Development
+
+```sh
+npm install
+npm run dev     # http://localhost:5173/json-db/
+npm run build
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+Pushes to `main` build and deploy to GitHub Pages (`.github/workflows/main.yml`). Pull requests into `main` and `develop` get a build check.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+## How the types fit together
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+- `src/lib/schema.ts`: a column's `kind` (`"number"`, `"string[]"`, …) is the single source of truth. `ValueOf<K>` derives the TypeScript type from it, and `codecFor(kind)` returns a typed parser and formatter.
+- `src/lib/reference.ts`: resolves references. `referenceOptions<K>` parses each referenced key with the referencing column's codec, so the picker can only return a value of that column's type.
+- `src/lib/storage.ts`: `validatedStorage<T>(validate)` checks what comes back from `localStorage` before the app sees it.

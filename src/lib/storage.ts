@@ -1,5 +1,12 @@
-import type { SyncStorage } from "jotai/utils"
+import type { atomWithStorage } from "jotai/utils"
 import type { Result } from "./schema"
+
+/**
+ * jotai's synchronous storage. `jotai/utils` doesn't export the type, so take
+ * it from `atomWithStorage`: its last overload is the synchronous one, and
+ * `Parameters` of an overloaded function reads the last overload.
+ */
+type SyncStorage<T> = NonNullable<Parameters<typeof atomWithStorage<T>>[2]>
 
 /**
  * localStorage as JSON, where every value read back is checked by `validate`.
@@ -27,12 +34,16 @@ export const validatedStorage = <T>(
     setItem: (key, value) => {
       try {
         localStorage.setItem(key, JSON.stringify(value))
-      } catch {} // private mode or quota: keep working in memory
+      } catch {
+        // Private mode or a full quota: keep working in memory.
+      }
     },
     removeItem: (key) => {
       try {
         localStorage.removeItem(key)
-      } catch {}
+      } catch {
+        // Same as above: nothing to clean up.
+      }
     },
     /** Keep other tabs in sync. */
     subscribe: (key, callback, initialValue) => {

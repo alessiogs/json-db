@@ -1,0 +1,6 @@
+[
+  { "id": "1", "bookId": "6", "memberId": "1", "stars": 5, "text": "Read it in one sitting." },
+  { "id": "2", "bookId": "4", "memberId": "2", "stars": 4, "text": "Sharper than I expected." },
+  { "id": "3", "bookId": "2", "memberId": "3", "stars": 5, "text": "Still unsettling." },
+  { "id": "4", "bookId": "9", "memberId": "1", "stars": 3, "text": "Points at a book that doesn't exist yet." }
+]

@@ -28,99 +28,138 @@ export const makeCollection = (name: string, data: Row[]): Collection => ({
   schema: inferSchema(data),
 })
 
+/*
+ * The example a first visit starts with: a small library. It uses every
+ * column kind, and its relations (below) make books and loans reference
+ * other collections, so the table shows e.g. an author's name beside its id.
+ */
 const seedCollections: Collection[] = [
   makeCollection("authors", [
-    {
-      id: "1",
-      name: "John Doe",
-      age: 30,
-      is_active: true,
-      skills: ["JavaScript", "React"],
-    },
-    {
-      id: "2",
-      name: "Jane Doe",
-      age: 25,
-      is_active: false,
-      skills: ["Python", "Django"],
-    },
-    {
-      id: "3",
-      name: "Bob Smith",
-      age: 40,
-      is_active: true,
-      skills: ["Java", "Spring"],
-    },
-    {
-      id: "4",
-      name: "Alice Johnson",
-      age: 35,
-      is_active: false,
-      skills: ["PHP", "Laravel"],
-    },
+    { id: "1", name: "F. Scott Fitzgerald", born: 1896, nationality: "American" },
+    { id: "2", name: "George Orwell", born: 1903, nationality: "British" },
+    { id: "3", name: "Jane Austen", born: 1775, nationality: "British" },
+    { id: "4", name: "J. R. R. Tolkien", born: 1892, nationality: "British" },
+    { id: "5", name: "Harper Lee", born: 1926, nationality: "American" },
+    { id: "6", name: "Gabriel García Márquez", born: 1927, nationality: "Colombian" },
+  ]),
+  makeCollection("genres", [
+    { id: "1", name: "Classic" },
+    { id: "2", name: "Dystopian" },
+    { id: "3", name: "Romance" },
+    { id: "4", name: "Fantasy" },
+    { id: "5", name: "Magical realism" },
   ]),
   makeCollection("books", [
     {
       id: "1",
       title: "The Great Gatsby",
       authorId: "1",
-      genreId: "4",
-      publication_year: 1925,
+      genreId: "1",
+      published: 1925,
+      available: true,
+      tags: ["jazz age", "new york"],
+      ratings: [5, 4, 4],
     },
     {
       id: "2",
-      title: "Book 2",
+      title: "Nineteen Eighty-Four",
       authorId: "2",
-      genreId: "3",
-      publication_year: 1960,
+      genreId: "2",
+      published: 1949,
+      available: false,
+      tags: ["surveillance", "totalitarianism"],
+      ratings: [5, 5, 4],
     },
     {
       id: "3",
-      title: "1984",
-      authorId: "3",
-      genreId: "1",
-      publication_year: 1949,
+      title: "Animal Farm",
+      authorId: "2",
+      genreId: "2",
+      published: 1945,
+      available: true,
+      tags: ["allegory", "satire"],
+      ratings: [4, 5],
     },
     {
       id: "4",
       title: "Pride and Prejudice",
-      authorId: "4",
-      genreId: "2",
-      publication_year: 1813,
+      authorId: "3",
+      genreId: "3",
+      published: 1813,
+      available: true,
+      tags: ["marriage", "class"],
+      ratings: [5, 4, 5],
     },
     {
       id: "5",
-      title: "The Catcher in the Rye",
-      authorId: "1",
-      genreId: "4",
-      publication_year: 1951,
+      title: "Emma",
+      authorId: "3",
+      genreId: "3",
+      published: 1815,
+      available: false,
+      tags: ["matchmaking"],
+      ratings: [4],
     },
     {
       id: "6",
-      title: "The Lord of the Rings",
-      authorId: "3",
+      title: "The Hobbit",
+      authorId: "4",
+      genreId: "4",
+      published: 1937,
+      available: true,
+      tags: ["adventure", "dragons"],
+      ratings: [5, 5],
+    },
+    {
+      id: "7",
+      title: "To Kill a Mockingbird",
+      authorId: "5",
       genreId: "1",
-      publication_year: 1954,
+      published: 1960,
+      available: true,
+      tags: ["justice", "childhood"],
+      ratings: [5, 4],
+    },
+    {
+      id: "8",
+      title: "One Hundred Years of Solitude",
+      authorId: "6",
+      genreId: "5",
+      published: 1967,
+      available: false,
+      tags: ["family saga", "macondo"],
+      ratings: [5, 3, 4],
     },
   ]),
-  makeCollection("genres", [
-    {
-      id: "1",
-      name: "Fiction",
-    },
-    {
-      id: "2",
-      name: "Non-Fiction",
-    },
-    {
-      id: "3",
-      name: "Drama",
-    },
-    {
-      id: "4",
-      name: "Romance",
-    },
+  makeCollection("members", [
+    { id: "1", name: "Giulia Rossi", email: "giulia@example.com", joined: 2021 },
+    { id: "2", name: "Marco Bianchi", email: "marco@example.com", joined: 2023 },
+    { id: "3", name: "Sara Conti", email: "sara@example.com", joined: 2024 },
   ]),
+  makeCollection("loans", [
+    { id: "1", bookId: "2", memberId: "1", returned: false },
+    { id: "2", bookId: "5", memberId: "2", returned: false },
+    { id: "3", bookId: "8", memberId: "3", returned: false },
+    { id: "4", bookId: "1", memberId: "1", returned: true },
+  ]),
+]
+
+const reference = (
+  collection: string,
+  key: string,
+  refersTo: string,
+  alias: string
+): Relation => ({
+  element: { collection, key },
+  refersTo: { collection: refersTo, key: "id" },
+  alias,
+})
+
+const seedRelations: Relation[] = [
+  reference("books", "authorId", "authors", "name"),
+  reference("books", "genreId", "genres", "name"),
+  reference("loans", "bookId", "books", "title"),
+  reference("loans", "memberId", "members", "name"),
 ]
 
 /**
@@ -188,7 +227,7 @@ export const validateRelations = (value: unknown): Result<Relation[]> =>
 
 export const relationsAtom = atomWithStorage<Relation[]>(
   "json-db:relations",
-  [],
+  seedRelations,
   validatedStorage(validateRelations),
   { getOnInit: true }
 )
