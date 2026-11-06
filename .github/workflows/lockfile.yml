@@ -14,7 +14,9 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm install
-      - run: cat node_modules/jotai/vanilla/utils/atomWithStorage.d.ts; grep -n "SyncStorage\|AsyncStorage\|atomWithStorage" node_modules/jotai/vanilla/utils.d.ts
+      - run: |
+          for f in $(grep -rl "SyncStorage" node_modules/jotai --include=*.d.ts | grep -v "/esm/"); do echo "=== $f"; cat "$f"; done
+        continue-on-error: true
       - run: npm run build
         continue-on-error: true
       - run: npm run lint
