@@ -1,137 +1,106 @@
-import { useAtom } from "jotai"
-import { collectionsAtom, type Relation } from "../atoms/jsonAtom"
+import { useAtomValue } from "jotai"
+import { collectionsAtom, relationsAtom, type Relation } from "../atoms/jsonAtom"
+import { referenceColumns } from "../lib/relation"
 import CustomSelect from "./CustomSelect"
-import { SelectItem } from "./ui/select"
 
 type RelationsEditorProps = {
   formData: Relation
   setFormData: (draft: Relation) => void
+  /** The stored relation being edited, so its own column stays pickable. */
+  editing?: Relation
 }
 
-const RelationsEditor = ({ formData, setFormData }: RelationsEditorProps) => {
-  const [collections] = useAtom(collectionsAtom)
-  const allKeys = collections.map((collection) => ({
-    collection: collection.name,
-    keys: collection.schema.map((column) => column.key),
-  }))
+const RelationsEditor = ({ formData, setFormData, editing }: RelationsEditorProps) => {
+  const collections = useAtomValue(collectionsAtom)
+  const relations = useAtomValue(relationsAtom)
+  const { element, refersTo, alias } = formData
 
-  const handleChange = (
-    value: string,
-    side: "element" | "refersTo",
-    level: "collection" | "key"
-  ) => {
-    // A relation can't point at its own collection: picking the target's
-    // collection as the element clears the target.
-    if (
-      side === "element" &&
-      level === "collection" &&
-      value === formData.refersTo.collection
-    ) {
-      setFormData({
-        ...formData,
-        element: { collection: value, key: "" },
-        refersTo: { collection: "", key: "" },
-      })
-      return
-    }
+  const names = collections.map((collection) => collection.name)
+  const byName = (name: string) => collections.find((item) => item.name === name)
+  const target = byName(refersTo.collection)
+  const targetKeys = target?.schema.map((column) => column.key) ?? []
+
+  // Changing a collection clears the fields that depend on it, so the draft
+  // never keeps a key from a collection that is no longer picked.
+  const setElementCollection = (collection: string) =>
     setFormData({
       ...formData,
-      [side]: {
-        ...formData[side],
-        [level]: value,
-      },
+      element: { collection, key: "" },
+      ...(collection === refersTo.collection && {
+        refersTo: { collection: "", key: "" },
+        alias: "",
+      }),
+    })
+
+  const setTargetCollection = (collection: string) => {
+    const keys = byName(collection)?.schema.map((column) => column.key) ?? []
+    setFormData({
+      ...formData,
+      refersTo: { collection, key: keys.includes("id") ? "id" : "" },
+      alias: "",
     })
   }
 
   return (
-    <section>
-      <div className="flex gap-4">
-        <label>Element</label>
+    <div className="grid gap-4">
+      <fieldset className="grid gap-2">
+        <legend className="mb-2 text-sm font-medium">Column</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <CustomSelect
+            options={names}
+            value={element.collection}
+            setValue={setElementCollection}
+            placeholder="Collection"
+          />
+          <CustomSelect
+            options={referenceColumns(byName(element.collection), relations, editing)}
+            value={element.key}
+            setValue={(key) =>
+              setFormData({ ...formData, element: { ...element, key } })
+            }
+            placeholder="Column"
+          />
+        </div>
+      </fieldset>
+
+      <fieldset className="grid gap-2">
+        <legend className="mb-2 text-sm font-medium">Points at</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <CustomSelect
+            options={names.filter((name) => name !== element.collection)}
+            value={refersTo.collection}
+            setValue={setTargetCollection}
+            placeholder="Collection"
+          />
+          <CustomSelect
+            options={targetKeys}
+            value={refersTo.key}
+            setValue={(key) =>
+              setFormData({ ...formData, refersTo: { ...refersTo, key } })
+            }
+            placeholder="Column"
+          />
+        </div>
+      </fieldset>
+
+      <div className="grid gap-2">
+        <label htmlFor="relation-alias" className="text-sm font-medium">
+          Show
+        </label>
         <CustomSelect
-          value={formData.element.collection}
-          setValue={(value) => handleChange(value, "element", "collection")}
-          defaultValue={formData.element.collection}
-          placeholder="Select collection"
-        >
-          {allKeys.map((collection, index) => (
-            <SelectItem key={index} value={collection.collection}>
-              {collection.collection}
-            </SelectItem>
-          ))}
-        </CustomSelect>
-        <CustomSelect
-          value={formData.element.key}
-          setValue={(value) => handleChange(value, "element", "key")}
-          defaultValue={formData.element.key}
-          placeholder="Select key"
-        >
-          {allKeys
-            .find(
-              (collection) =>
-                collection.collection === formData.element.collection
-            )
-            ?.keys.map((key, index) => (
-              <SelectItem key={index} value={key}>
-                {key}
-              </SelectItem>
-            ))}
-        </CustomSelect>
-      </div>
-      <label>Refers to</label>
-      <CustomSelect
-        value={formData.refersTo.collection}
-        setValue={(value) => handleChange(value, "refersTo", "collection")}
-        defaultValue={formData.refersTo.collection}
-        placeholder="Select collection"
-      >
-        {allKeys.map(
-          (collection, index) =>
-            collection.collection !== formData.element.collection && (
-              <SelectItem key={index} value={collection.collection}>
-                {collection.collection}
-              </SelectItem>
-            )
-        )}
-      </CustomSelect>
-      <CustomSelect
-        value={formData.refersTo.key}
-        setValue={(value) => handleChange(value, "refersTo", "key")}
-        defaultValue={formData.refersTo.key}
-        placeholder="Select key"
-      >
-        {allKeys
-          .find(
-            (collection) =>
-              collection.collection === formData.refersTo.collection
-          )
-          ?.keys.map((key, index) => (
-            <SelectItem key={index} value={key}>
-              {key}
-            </SelectItem>
-          ))}
-      </CustomSelect>
-      Use
-      {
-        <CustomSelect
-          value={formData.alias}
+          id="relation-alias"
+          options={targetKeys}
+          value={alias}
           setValue={(value) => setFormData({ ...formData, alias: value })}
-          defaultValue={formData.refersTo.key}
-          placeholder="Select key"
-        >
-          {allKeys
-            .find(
-              (collection) =>
-                collection.collection === formData.refersTo.collection
-            )
-            ?.keys.map((key, index) => (
-              <SelectItem key={index} value={key}>
-                {key}
-              </SelectItem>
-            ))}
-        </CustomSelect>
-      }
-      in place of {formData.element.key}
-    </section>
+          placeholder="Column to show"
+        />
+        <p className="text-sm text-muted-foreground">
+          {element.key && refersTo.collection && alias
+            ? `Each ${element.key} shows the ${alias} of the ${refersTo.collection} row it points at.`
+            : "The column shown beside each reference in the table."}
+        </p>
+      </div>
+    </div>
   )
 }
 

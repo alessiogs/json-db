@@ -1,30 +1,42 @@
-import { SelectValue } from "@radix-ui/react-select"
-import { Select, SelectContent, SelectGroup, SelectTrigger } from "./ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select"
 
 type CustomSelectProps = {
-  children: React.ReactNode
+  id?: string
+  options: readonly string[]
   value: string
   setValue: (value: string) => void
-  defaultValue: string
   placeholder: string
 }
+
+/** A select over plain string options; an empty value shows the placeholder. */
 const CustomSelect = ({
-  children,
+  id,
+  options,
   value,
   setValue,
-  defaultValue,
   placeholder,
-}: CustomSelectProps) => {
-  return (
-    <Select value={value} onValueChange={setValue} defaultValue={defaultValue}>
-      <SelectTrigger>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>{children}</SelectGroup>
-      </SelectContent>
-    </Select>
-  )
-}
+}: CustomSelectProps) => (
+  <Select value={value} onValueChange={setValue} disabled={options.length === 0}>
+    <SelectTrigger id={id} className="w-full">
+      <SelectValue placeholder={placeholder} />
+    </SelectTrigger>
+    <SelectContent position="popper">
+      <SelectGroup>
+        {options.map((option) => (
+          <SelectItem key={option} value={option}>
+            {option}
+          </SelectItem>
+        ))}
+      </SelectGroup>
+    </SelectContent>
+  </Select>
+)
 
 export default CustomSelect
