@@ -4,13 +4,20 @@ import { collectionsAtom, relationsAtom } from "../atoms/jsonAtom"
 import { useSelectedCollectionName } from "../hooks/useSelectedCollection"
 import { useUpdateCollection } from "../hooks/useUpdateCollection"
 import {
+  referenceOptions,
+  relationFrom,
+  resolveReference,
+} from "../lib/reference"
+import {
   codecFor,
+  isScalarKind,
   readCell,
   type CellValue,
   type Column,
   type Row,
 } from "../lib/schema"
 import CellEditor from "./CellEditor"
+import ReferencePicker from "./ReferencePicker"
 import {
   Dialog,
   DialogContent,
@@ -32,8 +39,17 @@ const DataTableCell = ({ row, column }: DataTableCellProps) => {
 
   const collectionName = useSelectedCollectionName()
   const updateCollection = useUpdateCollection(collectionName)
-  const collection = collections.find((c) => c.name === collectionName)
   const cell = readCell(row, column)
+
+  // A column a relation points from holds references to another collection.
+  const relation =
+    collectionName === null
+      ? undefined
+      : relationFrom(relations, collectionName, column.key)
+  const reference =
+    relation && cell.status === "valid"
+      ? resolveReference(collections, relation, cell.value)
+      : undefined
 
   const handleSave = (value: CellValue) => {
     updateCollection((current) => ({
@@ -45,49 +61,63 @@ const DataTableCell = ({ row, column }: DataTableCellProps) => {
     setOpen(false)
   }
 
-  const getDisplay = (): string => {
-    if (cell.status === "missing") return "-"
-    if (cell.status === "invalid") return String(cell.raw)
+  const display =
+    cell.status === "missing"
+      ? "-"
+      : cell.status === "invalid"
+        ? String(cell.raw)
+        : codecFor(column.kind).format(cell.value)
 
-    const relation = relations.find(
-      (item) =>
-        item.element.collection === collection?.name &&
-        item.element.key === column.key
-    )
-    if (relation) {
-      const alias = collections
-        .find((other) => other.name === relation.refersTo.collection)
-        ?.data.find((refRow) => refRow[relation.refersTo.key] === cell.value)?.[
-        relation.alias
-      ]
-      if (alias !== undefined) return String(alias)
-    }
-    return codecFor(column.kind).format(cell.value)
-  }
+  const problem =
+    cell.status === "invalid"
+      ? `Expected ${column.kind}`
+      : reference?.status === "dangling"
+        ? reference.reason
+        : undefined
+
+  const initial = cell.status === "valid" ? cell.value : undefined
 
   return (
     <TableCell>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger
           className={`w-full h-full text-left cursor-pointer hover:underline ${
-            cell.status === "invalid" ? "text-destructive" : ""
+            problem ? "text-destructive" : ""
           }`}
-          title={
-            cell.status === "invalid" ? `Expected ${column.kind}` : undefined
-          }
+          title={problem}
         >
-          {getDisplay()}
+          {display}
+          {reference?.status === "found" && (
+            <span className="ml-1.5 text-muted-foreground">
+              {reference.label}
+            </span>
+          )}
         </DialogTrigger>
         <DialogContent>
           <DialogTitle>{column.key}</DialogTitle>
-          <DialogDescription>
-            Edit this {column.kind} value. Press Enter to save.
-          </DialogDescription>
-          <CellEditor
-            kind={column.kind}
-            initial={cell.status === "valid" ? cell.value : undefined}
-            onSave={handleSave}
-          />
+          {relation && isScalarKind(column.kind) ? (
+            <>
+              <DialogDescription>
+                Pick the {relation.refersTo.collection} row this points at.
+              </DialogDescription>
+              <ReferencePicker
+                options={referenceOptions(collections, relation, column.kind)}
+                initial={initial}
+                onSave={handleSave}
+              />
+            </>
+          ) : (
+            <>
+              <DialogDescription>
+                Edit this {column.kind} value. Press Enter to save.
+              </DialogDescription>
+              <CellEditor
+                kind={column.kind}
+                initial={initial}
+                onSave={handleSave}
+              />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </TableCell>

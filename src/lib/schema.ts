@@ -62,6 +62,10 @@ export type Codec<T> = {
   is: (value: unknown) => value is T
 }
 
+/** Narrow a kind to a single-value one: not an array. */
+export const isScalarKind = (kind: ColumnKind): kind is ScalarKind =>
+  !kind.endsWith("[]")
+
 const scalarCodecs: { [K in ScalarKind]: Codec<ScalarTypes[K]> } = {
   string: {
     parse: (raw) => ok(raw),
