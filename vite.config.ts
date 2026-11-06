@@ -5,5 +5,6 @@ import tailwindcss from "@tailwindcss/vite"
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/json-db",
+  // Where the app is served. CI sets BASE_PATH to deploy develop under /dev/.
+  base: process.env.BASE_PATH ?? "/json-db/",
 })

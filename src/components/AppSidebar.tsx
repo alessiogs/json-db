@@ -150,7 +150,7 @@ const AppSidebar = () => {
                   <SidebarMenuAction
                     onClick={() => handleRemoveCollection(collection.name)}
                   >
-                    <Trash className="hover:text-red-700" />
+                    <Trash className="hover:text-destructive" />
                   </SidebarMenuAction>
                 </SidebarMenuItem>
               ))}
