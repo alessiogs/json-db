@@ -244,7 +244,3 @@ export const emptyRelation: Relation = {
   refersTo: { collection: "", key: "" },
   alias: "",
 }
-
-export const isCompleteRelation = ({ element, refersTo, alias }: Relation) =>
-  [element.collection, element.key, refersTo.collection, refersTo.key, alias]
-    .every(Boolean)
