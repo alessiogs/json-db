@@ -34,7 +34,7 @@ npm run dev     # http://localhost:5173/json-db/
 npm run build
 ```
 
-Pushes to `main` build and deploy to GitHub Pages (`.github/workflows/main.yml`). Pull requests into `main` and `develop` get a build check.
+Pushes to `main` or `develop` build both branches and deploy them to GitHub Pages together (`.github/workflows/main.yml`): `main` at https://alessiogs.github.io/json-db/ and `develop` at https://alessiogs.github.io/json-db/dev/. The dev build keeps its own `localStorage` data (`json-db-dev:` keys), so it never touches the main site's. Pull requests into `main` and `develop` get a build check.
 
 ## How the types fit together
 

@@ -185,8 +185,14 @@ export const validateCollections = (value: unknown): Result<Collection[]> => {
   })
 }
 
+/**
+ * Prefix for the localStorage keys. The /dev build sets its own so it doesn't
+ * share (or break) data with the main site on the same domain.
+ */
+const STORAGE_NAMESPACE = import.meta.env.VITE_STORAGE_NAMESPACE || "json-db"
+
 export const collectionsAtom = atomWithStorage(
-  "json-db:collections",
+  `${STORAGE_NAMESPACE}:collections`,
   seedCollections,
   validatedStorage(validateCollections),
   { getOnInit: true }
@@ -226,7 +232,7 @@ export const validateRelations = (value: unknown): Result<Relation[]> =>
   })
 
 export const relationsAtom = atomWithStorage<Relation[]>(
-  "json-db:relations",
+  `${STORAGE_NAMESPACE}:relations`,
   seedRelations,
   validatedStorage(validateRelations),
   { getOnInit: true }
@@ -238,7 +244,3 @@ export const emptyRelation: Relation = {
   refersTo: { collection: "", key: "" },
   alias: "",
 }
-
-export const isCompleteRelation = ({ element, refersTo, alias }: Relation) =>
-  [element.collection, element.key, refersTo.collection, refersTo.key, alias]
-    .every(Boolean)

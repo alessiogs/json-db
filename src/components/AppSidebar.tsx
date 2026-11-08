@@ -4,10 +4,15 @@ import { useSearchParams } from "react-router"
 import {
   collectionsAtom,
   emptyRelation,
-  isCompleteRelation,
   makeCollection,
   relationsAtom,
+  type Relation,
 } from "../atoms/jsonAtom"
+import {
+  describeRelation,
+  relationError,
+  removeCollectionRelations,
+} from "../lib/relation"
 import { parseRows } from "../lib/schema"
 import { download, toDbJson, toTypeScript } from "../lib/export"
 import {
@@ -50,7 +55,11 @@ const AppSidebar = () => {
   const [relations, setRelations] = useAtom(relationsAtom)
   const [collectionDialogOpen, setCollectionDialogOpen] = useState(false)
   const [relationDialogOpen, setRelationDialogOpen] = useState(false)
-  const [relationDraft, setRelationDraft] = useState(emptyRelation)
+  const [relationDraft, setRelationDraft] = useState<Relation>(emptyRelation)
+  // Index of the relation being edited; null while adding a new one.
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const editing = editingIndex === null ? undefined : relations[editingIndex]
+  const draftError = relationError(collections, relations, relationDraft, editing)
 
   const [uploadError, setUploadError] = useState<string | null>(null)
 
@@ -68,11 +77,26 @@ const AppSidebar = () => {
     setCollectionDialogOpen(false)
   }
 
-  const handleAddRelation = () => {
-    if (!isCompleteRelation(relationDraft)) return
-    setRelations((prev) => [...prev, relationDraft])
-    setRelationDraft(emptyRelation)
+  const openRelationDialog = (index: number | null) => {
+    setEditingIndex(index)
+    setRelationDraft(index === null ? emptyRelation : relations[index])
+    setRelationDialogOpen(true)
+  }
+
+  const handleSaveRelation = () => {
+    if (draftError) return
+    setRelations((prev) =>
+      editingIndex === null
+        ? [...prev, relationDraft]
+        : prev.map((relation, index) =>
+            index === editingIndex ? relationDraft : relation
+          )
+    )
     setRelationDialogOpen(false)
+  }
+
+  const handleRemoveRelation = (index: number) => {
+    setRelations((prev) => prev.filter((_, i) => i !== index))
   }
 
   const hasCollections = collections.length > 0
@@ -88,6 +112,8 @@ const AppSidebar = () => {
 
   const handleRemoveCollection = (name: string) => {
     setCollections((prev) => prev.filter((collection) => collection.name !== name))
+    // Relations from or to a removed collection can never resolve again.
+    setRelations((prev) => removeCollectionRelations(prev, name))
     if (searchParams.get("collection") === name) {
       setSearchParams((prev) => {
         prev.delete("collection")
@@ -101,42 +127,42 @@ const AppSidebar = () => {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Collections</SidebarGroupLabel>
-          <SidebarGroupAction className="cursor-pointer">
-            <Dialog
-              open={collectionDialogOpen}
-              onOpenChange={setCollectionDialogOpen}
-            >
-              <DialogTrigger asChild>
+          <Dialog
+            open={collectionDialogOpen}
+            onOpenChange={setCollectionDialogOpen}
+          >
+            <DialogTrigger asChild>
+              <SidebarGroupAction className="cursor-pointer" title="Add collection">
                 <Plus />
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Collection</DialogTitle>
-                </DialogHeader>
-                <DialogDescription></DialogDescription>
-                <div className="">
-                  <Input
-                    type="file"
-                    accept=".json"
-                    onChange={(e) => {
-                      setFile(e.target.files?.[0] ?? null)
-                      setUploadError(null)
-                    }}
-                  />
-                  {uploadError && (
-                    <p className="mt-2 text-sm text-destructive">
-                      {uploadError}
-                    </p>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={handleAddCollection}>
-                    Add
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </SidebarGroupAction>
+              </SidebarGroupAction>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Collection</DialogTitle>
+              </DialogHeader>
+              <DialogDescription></DialogDescription>
+              <div className="">
+                <Input
+                  type="file"
+                  accept=".json"
+                  onChange={(e) => {
+                    setFile(e.target.files?.[0] ?? null)
+                    setUploadError(null)
+                  }}
+                />
+                {uploadError && (
+                  <p className="mt-2 text-sm text-destructive">
+                    {uploadError}
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleAddCollection}>
+                  Add
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <SidebarGroupContent>
             <SidebarMenu>
               {collections.map((collection) => (
@@ -150,7 +176,7 @@ const AppSidebar = () => {
                   <SidebarMenuAction
                     onClick={() => handleRemoveCollection(collection.name)}
                   >
-                    <Trash className="hover:text-red-700" />
+                    <Trash className="hover:text-destructive" />
                   </SidebarMenuAction>
                 </SidebarMenuItem>
               ))}
@@ -160,42 +186,68 @@ const AppSidebar = () => {
 
         <SidebarGroup>
           <SidebarGroupLabel>Relations</SidebarGroupLabel>
-          <SidebarGroupAction className="cursor-pointer">
-            <Dialog
-              open={relationDialogOpen}
-              onOpenChange={setRelationDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Plus />
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Relation</DialogTitle>
-                </DialogHeader>
-                <DialogDescription></DialogDescription>
-                <RelationsEditor
-                  formData={relationDraft}
-                  setFormData={setRelationDraft}
-                />
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    disabled={!isCompleteRelation(relationDraft)}
-                    onClick={handleAddRelation}
-                  >
-                    Add
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+          <SidebarGroupAction
+            className="cursor-pointer"
+            title="Add relation"
+            disabled={collections.length < 2}
+            onClick={() => openRelationDialog(null)}
+          >
+            <Plus />
           </SidebarGroupAction>
+          <Dialog open={relationDialogOpen} onOpenChange={setRelationDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editing ? "Edit relation" : "Add relation"}
+                </DialogTitle>
+                <DialogDescription>
+                  Make a column reference rows of another collection.
+                </DialogDescription>
+              </DialogHeader>
+              <RelationsEditor
+                formData={relationDraft}
+                setFormData={setRelationDraft}
+                editing={editing}
+              />
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setRelationDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={draftError !== undefined}
+                  title={draftError}
+                  onClick={handleSaveRelation}
+                >
+                  {editing ? "Save" : "Add"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <SidebarGroupContent>
             <SidebarMenu>
-              {relations.map((_, index) => (
+              {relations.length === 0 && (
+                <p className="px-2 text-xs text-muted-foreground">
+                  No relations yet.
+                </p>
+              )}
+              {relations.map((relation, index) => (
                 <SidebarMenuItem key={index}>
-                  <SidebarMenuButton asChild>
-                    <span className="cursor-pointer">{index}</span>
+                  <SidebarMenuButton
+                    className="cursor-pointer"
+                    title="Edit relation"
+                    onClick={() => openRelationDialog(index)}
+                  >
+                    <span className="truncate">{describeRelation(relation)}</span>
                   </SidebarMenuButton>
+                  <SidebarMenuAction
+                    title="Remove relation"
+                    onClick={() => handleRemoveRelation(index)}
+                  >
+                    <Trash className="hover:text-destructive" />
+                  </SidebarMenuAction>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

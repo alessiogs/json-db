@@ -1,5 +1,6 @@
 import AppSidebar from "./components/AppSidebar"
 import CollectionEditor from "./components/CollectionEditor"
+import ThemeToggle from "./components/ThemeToggle"
 import {
   SidebarInset,
   SidebarProvider,
@@ -11,8 +12,9 @@ const App = () => {
     <SidebarProvider>
       <AppSidebar />
       <main className="w-screen">
-        <header className="flex p-2">
+        <header className="flex items-center justify-between p-2">
           <SidebarTrigger />
+          <ThemeToggle />
         </header>
         <SidebarInset>
           <main className="p-2 w-full">
